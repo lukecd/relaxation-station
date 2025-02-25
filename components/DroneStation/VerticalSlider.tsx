@@ -49,10 +49,10 @@ export const VerticalSlider = ({
   }, [handleDrag]);
 
   return (
-    <div className="h-64 flex flex-col items-center gap-2">
+    <div className="h-48 md:h-64 flex flex-col items-center gap-2">
       <div 
         ref={sliderRef}
-        className="h-full w-6 bg-white/20 backdrop-blur-sm rounded-full relative cursor-pointer shadow-lg"
+        className="h-full w-4 md:w-6 bg-white/20 backdrop-blur-sm rounded-full relative cursor-pointer shadow-lg"
         onMouseDown={(e) => {
           isDragging.current = true;
           handleDrag(e.clientY);
@@ -64,14 +64,14 @@ export const VerticalSlider = ({
         />
       </div>
       <button 
-        className="w-8 h-8 rounded-full bg-white/90 shadow-lg hover:bg-white hover:scale-110 active:scale-95 transition-all backdrop-blur-sm flex items-center justify-center"
+        className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white/90 shadow-lg hover:bg-white hover:scale-110 active:scale-95 transition-all backdrop-blur-sm flex items-center justify-center"
         onClick={() => {
           onChange(0);
           onMute(index);
         }}
         title="Mute"
       >
-        <div className="w-4 h-0.5 bg-black/20 rounded-full" />
+        <div className="w-3 md:w-4 h-0.5 bg-black/20 rounded-full" />
       </button>
     </div>
   );

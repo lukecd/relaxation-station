@@ -19,7 +19,8 @@ export const ModulationButton = ({
 }: ModulationButtonProps) => (
   <button
     className={`
-      px-4 py-2 rounded-full transition-all duration-300 flex items-center gap-2
+      px-2 py-1 md:px-4 md:py-2 rounded-full transition-all duration-300 
+      flex items-center gap-2 text-sm md:text-base
       ${active ? 'bg-opacity-100 shadow-lg scale-105' : 'bg-opacity-75 hover:bg-opacity-90'}
       ${color}
     `}

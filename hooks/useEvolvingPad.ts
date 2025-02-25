@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import * as Tone from 'tone';
 import { AudioRefs, OscillatorPair } from './types';
 import { AUDIO_SETTINGS, PHRYGIAN_CHORDS, sliderToGain } from './constants';
+import { VOLUME_LEVELS } from './config';
 
 export const useEvolvingPad = () => {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -30,7 +31,8 @@ export const useEvolvingPad = () => {
     chorusLFO: useRef<Tone.LFO | null>(null),
     samplePlayers: useRef<Tone.Player[]>([]),
     sampleEnvelopes: useRef<Tone.AmplitudeEnvelope[]>([]),
-    sampleGains: useRef<Tone.Gain[]>([])
+    sampleGains: useRef<Tone.Gain[]>([]),
+    pluckSynth: useRef<Tone.PluckSynth | null>(null),
   };
 
   const initializeAudio = useCallback(async () => {
@@ -78,7 +80,7 @@ export const useEvolvingPad = () => {
       // Create and configure ambient player
       audioRefs.player.current = new Tone.Player();
       audioRefs.player.current.loop = true;
-      audioRefs.player.current.volume.value = -12;
+      audioRefs.player.current.volume.value = 20 * Math.log10(VOLUME_LEVELS.AMBIENT);
       audioRefs.player.current.connect(audioRefs.birdsGain.current);
       
       // Load ambient sound
@@ -233,6 +235,34 @@ export const useEvolvingPad = () => {
 
       // Trigger all envelopes
       envelopes.forEach(env => env.triggerAttack());
+
+      // Create pluck synth effects chain
+      const pluckReverb = new Tone.Reverb({
+        decay: 5,
+        wet: 0.6
+      }).toDestination();
+
+      const pluckDelay = new Tone.FeedbackDelay({
+        delayTime: "4n",
+        feedback: 0.6,
+        wet: 0.5
+      }).connect(pluckReverb);
+
+      const pluckFilter = new Tone.Filter({
+        frequency: 800,
+        type: "lowpass",
+        rolloff: -24
+      }).connect(pluckDelay);
+
+      // Initialize pluck synth with original settings
+      const pluck = new Tone.PluckSynth({
+        attackNoise: 1,     // Less initial noise
+        dampening: 1800,    // Lower dampening for less high end
+        resonance: 0.98,    // More resonance for body
+        volume: 20 * Math.log10(VOLUME_LEVELS.MELODY)
+      }).connect(pluckFilter);  // Connect to filter instead of chorus
+
+      audioRefs.pluckSynth.current = pluck;
 
       // Set initialized state
       hasInitialized.current = true;

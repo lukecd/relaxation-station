@@ -11,34 +11,42 @@ import { ModulationButton } from './ModulationButton';
 import { VerticalSlider } from './VerticalSlider';
 import { HorizontalSlider } from './HorizontalSlider';
 import { sliderToGain } from '../../hooks/constants';
+import { VOLUME_LEVELS } from '../../hooks/config';
 
 const NUM_NODES = 16;
-const BASE_NODE_SIZE = 16;
-const MAX_SCALE = 3;
-const BASE_RADIUS = 192; // Inner circle radius
-const MAX_RADIUS = BASE_RADIUS + 96; // Outer circle radius
+const BASE_NODE_SIZE = 12;                // Base size for mobile
+const MAX_SCALE = 2.5;                    // Scale multiplier
+const BASE_RADIUS = 140;                  // Base radius for mobile
+const MAX_RADIUS = BASE_RADIUS + 60;      // Max radius for mobile
+const DESKTOP_BASE_RADIUS = 240;          // Base radius for desktop
+const DESKTOP_MAX_RADIUS = DESKTOP_BASE_RADIUS + 96;  // Max radius for desktop
 
 const DroneStation: React.FC = () => {
   const { audioRefs, isInitialized, initializeAudio, startAudio, stopAudio } = useEvolvingPad();
   const { availableNotes, getNextNote } = useChordProgression();
-  const { triggerNote } = usePluckSynth();
+  const { triggerNote } = usePluckSynth(audioRefs.pluckSynth);
   const [nodePositions, setNodePositions] = useState<NodePosition[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(true);
   const [oscillatorValues, setOscillatorValues] = useState([50, 50, 50]);
   const [ambientValue, setAmbientValue] = useState(50);
+  const [melodyValue, setMelodyValue] = useState(50);
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Initialize sequencer with node positions and note triggering
   const { activeStep } = useSequencer(nodePositions, availableNotes, triggerNote, getNextNote, !isPaused);
 
   useEffect(() => {
+    // Get initial radius based on screen size
+    const isDesktop = window.innerWidth >= 768;
+    const initialRadius = isDesktop ? DESKTOP_BASE_RADIUS : BASE_RADIUS;
+
     // Initialize node positions in a circle
     const positions: NodePosition[] = [];
     for (let i = 0; i < NUM_NODES; i++) {
       positions.push({
-        radius: BASE_RADIUS,
+        radius: initialRadius,
         probability: 0
       });
     }
@@ -88,6 +96,11 @@ const DroneStation: React.FC = () => {
     if (!isDragging || dragIndex === null) return;
 
     const rect = event.currentTarget.getBoundingClientRect();
+    const isDesktop = rect.width >= 500; // Check if we're in desktop mode
+    
+    const currentBaseRadius = isDesktop ? DESKTOP_BASE_RADIUS : BASE_RADIUS;
+    const currentMaxRadius = isDesktop ? DESKTOP_MAX_RADIUS : MAX_RADIUS;
+    
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
     
@@ -106,9 +119,9 @@ const DroneStation: React.FC = () => {
     const projection = mouseX * nodeX + mouseY * nodeY;
     
     // Calculate normalized distance along the radius line
-    const radiusRange = MAX_RADIUS - BASE_RADIUS;
-    const clampedProjection = Math.max(BASE_RADIUS, Math.min(MAX_RADIUS, projection));
-    const probability = (clampedProjection - BASE_RADIUS) / radiusRange;
+    const radiusRange = currentMaxRadius - currentBaseRadius;
+    const clampedProjection = Math.max(currentBaseRadius, Math.min(currentMaxRadius, projection));
+    const probability = (clampedProjection - currentBaseRadius) / radiusRange;
 
     setNodePositions(prev => {
       const newPositions = [...prev];
@@ -146,8 +159,10 @@ const DroneStation: React.FC = () => {
       
       setTimeout(() => {
         if (audioRefs.oscillators.current && audioRefs.detunedOscillators.current) {
-          audioRefs.oscillators.current[index]?.stop();
-          audioRefs.detunedOscillators.current[index]?.stop();
+          audioRefs.oscillators.current[index]?.[0]?.stop();
+          audioRefs.oscillators.current[index]?.[1]?.stop();
+          audioRefs.detunedOscillators.current[index]?.[0]?.stop();
+          audioRefs.detunedOscillators.current[index]?.[1]?.stop();
         }
       }, 4500);
     }
@@ -182,22 +197,39 @@ const DroneStation: React.FC = () => {
     audioRefs.birdsGain.current.gain.rampTo(gain, 0.1);
   }, [ambientValue, isInitialized, audioRefs.birdsGain]);
 
+  // Update effect for melody volume
+  useEffect(() => {
+    if (!isInitialized || !audioRefs.pluckSynth.current) return;
+    
+    const gain = sliderToGain(melodyValue, false);
+    audioRefs.pluckSynth.current.volume.rampTo(20 * Math.log10(VOLUME_LEVELS.MELODY * gain), 0.1);
+  }, [melodyValue, isInitialized, audioRefs.pluckSynth]);
+
   const handleRandomize = () => {
+    // Helper function to get random value between 10-85
+    const safeRandomValue = () => Math.floor(Math.random() * 76) + 10; // 76 + 10 = max of 85
+
     // Randomize oscillator values
-    const newOscillatorValues = oscillatorValues.map(() => 
-      Math.floor(Math.random() * 101)
-    );
+    const newOscillatorValues = oscillatorValues.map(() => safeRandomValue());
     setOscillatorValues(newOscillatorValues);
 
     // Randomize ambient value
-    setAmbientValue(Math.floor(Math.random() * 101));
+    setAmbientValue(safeRandomValue());
+
+    // Randomize melody value
+    setMelodyValue(safeRandomValue());
+
+    // Get current radius values based on screen size
+    const isDesktop = window.innerWidth >= 768;
+    const currentBaseRadius = isDesktop ? DESKTOP_BASE_RADIUS : BASE_RADIUS;
+    const currentMaxRadius = isDesktop ? DESKTOP_MAX_RADIUS : MAX_RADIUS;
 
     // Randomize node positions
     const newPositions = nodePositions.map(() => {
-      const radius = BASE_RADIUS + (Math.random() * (MAX_RADIUS - BASE_RADIUS));
+      const radius = currentBaseRadius + (Math.random() * (currentMaxRadius - currentBaseRadius));
       return {
         radius,
-        probability: (radius - BASE_RADIUS) / (MAX_RADIUS - BASE_RADIUS)
+        probability: (radius - currentBaseRadius) / (currentMaxRadius - currentBaseRadius)
       };
     });
     setNodePositions(newPositions);
@@ -222,27 +254,25 @@ const DroneStation: React.FC = () => {
       
       <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]" />
       
-      <div className="absolute top-0 left-0 right-0 text-center p-8">
-        <h1 className="text-6xl text-white/90 tracking-wide">
+      <div className="absolute top-0 left-0 right-0 text-center p-8 z-30">
+        <h1 className="text-4xl md:text-6xl text-white/90 tracking-wide">
           To Pause In Preignac
         </h1>
       </div>
 
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex items-center justify-center min-h-[600px]">
         {/* Circular Nodes */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
           <div 
-            className="relative w-[440px] h-[440px] pointer-events-auto"
+            className="relative w-[300px] h-[300px] md:w-[500px] md:h-[500px] pointer-events-auto"
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
           >
             {/* Draw the outer circle guide */}
             <div 
-              className="absolute rounded-full border border-white/20"
+              className="absolute rounded-full border border-white/20 w-[400px] h-[400px] md:w-[672px] md:h-[672px]"
               style={{
-                width: `${MAX_RADIUS * 2}px`,
-                height: `${MAX_RADIUS * 2}px`,
                 left: '50%',
                 top: '50%',
                 transform: 'translate(-50%, -50%)'
@@ -251,10 +281,8 @@ const DroneStation: React.FC = () => {
             
             {/* Draw the inner circle guide */}
             <div 
-              className="absolute rounded-full border border-white/20"
+              className="absolute rounded-full border border-white/20 w-[280px] h-[280px] md:w-[480px] md:h-[480px]"
               style={{
-                width: `${BASE_RADIUS * 2}px`,
-                height: `${BASE_RADIUS * 2}px`,
                 left: '50%',
                 top: '50%',
                 transform: 'translate(-50%, -50%)'
@@ -267,14 +295,14 @@ const DroneStation: React.FC = () => {
               const y = node.radius * Math.sin(angle);
               
               const nodeSize = BASE_NODE_SIZE + (node.probability * (BASE_NODE_SIZE * MAX_SCALE - BASE_NODE_SIZE));
-              const hitAreaSize = Math.max(nodeSize * 1.5, 24);
+              const hitAreaSize = Math.max(nodeSize * 1.5, 20);
 
               return (
                 <div
                   key={index}
-                  className={`absolute rounded-full backdrop-blur-sm shadow-lg pointer-events-auto select-none ${
-                    index === activeStep ? 'ring-2 ring-white' : ''
-                  } ${isDragging && dragIndex === index ? 'scale-125 z-10' : ''}`}
+                  className={`absolute rounded-full backdrop-blur-sm shadow-lg pointer-events-auto select-none 
+                    ${index === activeStep ? 'ring ring-white md:ring-2' : ''} 
+                    ${isDragging && dragIndex === index ? 'scale-110 md:scale-125 z-10' : ''}`}
                   style={{
                     width: `${hitAreaSize}px`,
                     height: `${hitAreaSize}px`,
@@ -306,8 +334,8 @@ const DroneStation: React.FC = () => {
         </div>
         
         {/* Controls */}
-        <div className="absolute max-w-xl w-full px-8 space-y-8">
-          <div className="flex justify-center gap-8">
+        <div className="absolute max-w-xl w-full px-4 md:px-8 space-y-4 md:space-y-8">
+          <div className="flex justify-center gap-4 md:gap-8">
             {oscillatorValues.map((value, i) => (
               <VerticalSlider
                 key={i}
@@ -316,9 +344,6 @@ const DroneStation: React.FC = () => {
                   const newValues = [...oscillatorValues];
                   newValues[i] = newValue;
                   setOscillatorValues(newValues);
-                  
-                  // Don't try to start oscillators here - they should already be running
-                  // Just let the gain effect hook handle the volume
                 }}
                 color={[
                   'bg-sunrise-clouds/90',
@@ -331,12 +356,23 @@ const DroneStation: React.FC = () => {
             ))}
           </div>
 
-          <HorizontalSlider value={ambientValue} onChange={setAmbientValue} />
+          <div className="space-y-2 md:space-y-4">
+            <HorizontalSlider 
+              value={ambientValue} 
+              onChange={setAmbientValue}
+              variant="ambient"
+            />
+            <HorizontalSlider 
+              value={melodyValue} 
+              onChange={setMelodyValue}
+              variant="melody"
+            />
+          </div>
         </div>
       </div>
 
       {isInitialized && (
-        <div className="fixed bottom-8 right-8 z-20 flex gap-4 items-center">
+        <div className="fixed bottom-4 md:bottom-8 right-4 md:right-8 z-20 flex gap-2 md:gap-4 items-center">
           <ModulationButton
             label="random"
             color="bg-white/90"

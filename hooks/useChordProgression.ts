@@ -13,21 +13,19 @@ export const useChordProgression = () => {
     
     const notes: string[] = [];
     
-    // Add chord tones with higher weight (duplicate them for higher probability)
+    // Add chord tones with higher probability (3x weight)
     for (let octave = BASE_OCTAVE; octave <= BASE_OCTAVE + 1; octave++) {
       chordNotes.forEach(note => {
-        // Add each chord tone three times for higher probability
         notes.push(`${note}${octave}`);
         notes.push(`${note}${octave}`);
         notes.push(`${note}${octave}`);
       });
     }
     
-    // Add scale tones with lower weight
+    // Add scale tones with lower probability (1x weight)
     for (let octave = BASE_OCTAVE; octave <= BASE_OCTAVE + 1; octave++) {
       PHRYGIAN_SCALE.forEach(note => {
         if (!chordNotes.includes(note)) {
-          // Add each scale tone once for lower probability
           notes.push(`${note}${octave}`);
         }
       });
@@ -37,19 +35,19 @@ export const useChordProgression = () => {
   }, []);
 
   useEffect(() => {
-    updateAvailableNotes(currentChordIndex);
-  }, [currentChordIndex, updateAvailableNotes]);
-
-  useEffect(() => {
     const interval = setInterval(() => {
       setCurrentChordIndex(prev => {
         const next = (prev + 1) % PHRYGIAN_CHORDS.length;
         return next;
       });
-    }, (60 / 90) * 1000 * 32); // 32 beats = 8 bars at 90 BPM
+    }, (60 / 90) * 1000 * 32); // Change every 8 bars at 90 BPM
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    updateAvailableNotes(currentChordIndex);
+  }, [currentChordIndex, updateAvailableNotes]);
 
   const getNextNote = (probability: number): string => {
     if (!lastNote || availableNotes.length === 0) {
@@ -58,20 +56,11 @@ export const useChordProgression = () => {
       return note;
     }
 
-    // Get the current note's info
-    const [noteName, octave] = lastNote.split(/(\d+)/);
     const currentIndex = availableNotes.indexOf(lastNote);
-
-    // Higher probability = more likely to move by larger intervals
-    const maxStep = Math.floor(1 + (probability * 4)); // 1-5 steps
-    
-    // Choose direction (-1 or 1) with slight upward bias for more melodic movement
-    const direction = Math.random() > 0.4 ? 1 : -1;
-    
-    // Calculate the step size based on probability
+    const maxStep = Math.floor(1 + (probability * 4)); // Higher probability = larger intervals
+    const direction = Math.random() > 0.4 ? 1 : -1;    // Slight upward bias
     const step = Math.floor(Math.random() * maxStep) + 1;
     
-    // Calculate target index with wrapping
     let targetIndex = currentIndex + (direction * step);
     targetIndex = ((targetIndex % availableNotes.length) + availableNotes.length) % availableNotes.length;
     
