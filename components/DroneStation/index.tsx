@@ -11,6 +11,7 @@ import { VerticalSlider } from './VerticalSlider';
 import { HorizontalSlider } from './HorizontalSlider';
 import { sliderToGain } from '../../hooks/constants';
 import { VOLUME_LEVELS } from '../../hooks/config';
+import { useAutoModulation } from '../../hooks/useAutoModulation';
 
 const NUM_NODES = 16;
 const BASE_NODE_SIZE = 12;                // Base size for mobile
@@ -35,6 +36,9 @@ const DroneStation: React.FC = () => {
 
   // Initialize sequencer with node positions and note triggering
   const { activeStep } = useSequencer(nodePositions, availableNotes, triggerNote, getNextNote, !isPaused);
+
+  // Add auto-modulation
+  useAutoModulation(nodePositions, setNodePositions, !isPaused);
 
   useEffect(() => {
     // Get initial radius based on screen size
