@@ -37,18 +37,13 @@ export const useEvolvingPad = () => {
 
   const initializeAudio = useCallback(async () => {
     if (hasInitialized.current || cleanupInProgress.current) {
-      console.log('🎵 Audio already initialized or cleanup in progress');
       return false;
     }
-
-    console.log('🎵 Starting audio initialization...');
 
     try {
       // First, ensure we have user interaction
       if (Tone.context.state !== 'running') {
-        console.log('⏳ Waiting for user gesture to start audio context...');
         await Tone.start();
-        console.log('✓ Audio context started:', Tone.context.state);
       }
 
       // Initialize effects chain
@@ -85,11 +80,6 @@ export const useEvolvingPad = () => {
       
       // Load ambient sound
       await audioRefs.player.current.load("/samples/birds.mp3");
-      console.log('✓ Ambient sound loaded');
-      
-      // Start the ambient player immediately after loading
-      audioRefs.player.current.start();
-      console.log('✓ Started ambient player');
 
       // Initialize drone gains with proper initial volume
       const droneGains = [
@@ -269,10 +259,8 @@ export const useEvolvingPad = () => {
       setIsInitialized(true);
       setIsStarted(true);
 
-      console.log('✓ Audio engine initialized with pads');
       return true;
     } catch (error) {
-      console.error('❌ Error during audio initialization:', error);
       hasInitialized.current = false;
       setIsInitialized(false);
       setIsStarted(false);
@@ -282,26 +270,21 @@ export const useEvolvingPad = () => {
 
   const startAudio = useCallback(async () => {
     if (!hasInitialized.current || !isInitialized) {
-      console.log('⚠️ Cannot start - not initialized');
       return;
     }
 
     if (isStarted) {
-      console.log('⚠️ Already started');
       return;
     }
 
     if (cleanupInProgress.current) {
-      console.log('⚠️ Cannot start - cleanup in progress');
       return;
     }
 
     try {
       // Ensure context is running
       if (Tone.context.state !== 'running') {
-        console.log('⚠️ Context not running, resuming...');
         await Tone.context.resume();
-        console.log('✓ Context resumed:', Tone.context.state);
       }
 
       // Start oscillators and envelopes
@@ -324,12 +307,8 @@ export const useEvolvingPad = () => {
           mainEnv.triggerAttack();
           detunedEnv.triggerAttack();
           
-          console.log(`✓ Restarted oscillator pair ${i}:`, {
-            mainEnvValue: mainEnv.value,
-            detunedEnvValue: detunedEnv.value
-          });
         } catch (error) {
-          console.error(`❌ Error restarting oscillator pair ${i}:`, error);
+          console.error(`Error restarting oscillator pair ${i}:`, error);
         }
       });
 
@@ -339,28 +318,22 @@ export const useEvolvingPad = () => {
       }
 
       setIsStarted(true);
-      console.log('✓ Audio restarted!');
     } catch (error) {
-      console.error('❌ Error starting audio:', error);
+      console.error('Error starting audio:', error);
       setIsStarted(false);
     }
   }, [isInitialized, isStarted]);
 
   const stopAudio = useCallback(() => {
-    console.log('⏹️ Stopping audio...');
-    
     if (!isInitialized || !isStarted) {
-      console.log('❌ Cannot stop audio - not running');
       return;
     }
 
     try {
       audioRefs.player.current?.stop();
-      console.log('✓ Stopped ambient player');
 
       audioRefs.envelopes.current.forEach((env, i) => {
         env.triggerRelease();
-        console.log(`✓ Released envelope ${i}`);
       });
       
       setTimeout(() => {
@@ -369,14 +342,12 @@ export const useEvolvingPad = () => {
           oscPair[1].stop();
           audioRefs.detunedOscillators.current[i][0].stop();
           audioRefs.detunedOscillators.current[i][1].stop();
-          console.log(`✓ Stopped oscillator pair ${i}`);
         });
       }, 4500);
 
       setIsStarted(false);
-      console.log('⏹️ All audio stopped!');
     } catch (error) {
-      console.error('❌ Error during audio stop:', error);
+      console.error('Error during audio stop:', error);
     }
   }, [isInitialized, isStarted]);
 

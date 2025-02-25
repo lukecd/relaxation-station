@@ -74,7 +74,15 @@ The piece is in E Phrygian mode, progressing through a series of chords:
 - C (flat VI)
 - Dm (minor VII)
 
-The melody favors chord tones (3x probability) over scale tones, creating a consonant but evolving pattern.
+### Harmonic Integration
+The melody is dynamically harmonized with the evolving chord progression using Tonal.js:
+- Each chord change updates the available note pool
+- Current chord tones are given triple weight in the selection process
+- Other scale tones are available but less likely to be chosen
+- This creates a melody that follows the harmony while maintaining interest
+- Notes are selected from two octaves (4 and 5) for melodic variety
+
+The result is an ever-changing melody that stays musically coherent with the underlying drone chords, creating a sense of both stability and movement.
 
 ## Sound Design Research
 

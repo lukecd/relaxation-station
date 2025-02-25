@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import * as Tone from 'tone';
 import { useEvolvingPad } from '../../hooks/useEvolvingPad';
 import { useChordProgression } from '../../hooks/useChordProgression';
 import { usePluckSynth } from '../../hooks/usePluckSynth';
@@ -54,33 +53,18 @@ const DroneStation: React.FC = () => {
   }, []);
 
   const handleStartClick = async () => {
-    console.log('🎵 Starting audio...');
-    try {
-      await initializeAudio();
-      setIsPlaying(true);
-      setIsPaused(false);
-      console.log('✓ Audio started!');
-    } catch (error) {
-      console.error('❌ Error starting audio:', error);
-      setIsPlaying(false);
-      setIsPaused(true);
-    }
+    await initializeAudio();
+    setIsPlaying(true);
+    setIsPaused(false);
   };
 
   const handlePlayPause = async () => {
-    console.log('🎮 Play/Pause triggered:', { isPaused });
-    try {
-      if (isPaused) {
-        await startAudio();
-        console.log('✓ Audio restarted');
-        setIsPaused(false);
-      } else {
-        stopAudio();
-        console.log('✓ Audio stopped');
-        setIsPaused(true);
-      }
-    } catch (error) {
-      console.error('❌ Error in play/pause:', error);
+    if (isPaused) {
+      await startAudio();
+      setIsPaused(false);
+    } else {
+      stopAudio();
+      setIsPaused(true);
     }
   };
 
@@ -96,7 +80,7 @@ const DroneStation: React.FC = () => {
     if (!isDragging || dragIndex === null) return;
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const isDesktop = rect.width >= 500; // Check if we're in desktop mode
+    const isDesktop = rect.width >= 500;
     
     const currentBaseRadius = isDesktop ? DESKTOP_BASE_RADIUS : BASE_RADIUS;
     const currentMaxRadius = isDesktop ? DESKTOP_MAX_RADIUS : MAX_RADIUS;
@@ -107,18 +91,12 @@ const DroneStation: React.FC = () => {
     const mouseX = event.clientX - centerX;
     const mouseY = event.clientY - centerY;
     
-    // Calculate angle of the node (fixed for the dragging node)
     const angle = (dragIndex / NUM_NODES) * 2 * Math.PI - Math.PI / 2;
     
-    // Calculate the vector from center to mouse
-    const mouseDistance = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
-    
-    // Project the mouse position onto the node's radius line
     const nodeX = Math.cos(angle);
     const nodeY = Math.sin(angle);
     const projection = mouseX * nodeX + mouseY * nodeY;
     
-    // Calculate normalized distance along the radius line
     const radiusRange = currentMaxRadius - currentBaseRadius;
     const clampedProjection = Math.max(currentBaseRadius, Math.min(currentMaxRadius, projection));
     const probability = (clampedProjection - currentBaseRadius) / radiusRange;
@@ -152,7 +130,6 @@ const DroneStation: React.FC = () => {
   }, [isDragging]);
 
   const handleDroneMute = (index: number) => {
-    console.log(`Muting drone ${index}`);
     if (audioRefs.envelopes.current) {
       audioRefs.envelopes.current[index]?.triggerRelease();
       audioRefs.envelopes.current[index + 3]?.triggerRelease();
@@ -170,16 +147,11 @@ const DroneStation: React.FC = () => {
 
   // Update oscillator gains when values change
   useEffect(() => {
-    if (!isInitialized || !audioRefs.droneGains.current) {
-      console.log('Skipping gain update - not initialized');
-      return;
-    }
+    if (!isInitialized || !audioRefs.droneGains.current) return;
 
-    console.log('Updating oscillator gains:', oscillatorValues);
     oscillatorValues.forEach((value, i) => {
       if (audioRefs.droneGains.current[i]) {
         const gain = sliderToGain(value, false);
-        console.log(`Setting oscillator ${i} gain:`, { value, calculatedGain: gain });
         audioRefs.droneGains.current[i].gain.rampTo(gain, 0.1);
       }
     });
@@ -187,13 +159,9 @@ const DroneStation: React.FC = () => {
 
   // Update ambient gain when value changes
   useEffect(() => {
-    if (!isInitialized || !audioRefs.birdsGain.current) {
-      console.log('Skipping ambient gain update - not initialized');
-      return;
-    }
+    if (!isInitialized || !audioRefs.birdsGain.current) return;
 
     const gain = sliderToGain(ambientValue, true);
-    console.log('Setting ambient gain:', { value: ambientValue, calculatedGain: gain });
     audioRefs.birdsGain.current.gain.rampTo(gain, 0.1);
   }, [ambientValue, isInitialized, audioRefs.birdsGain]);
 
