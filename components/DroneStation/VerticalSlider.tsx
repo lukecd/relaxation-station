@@ -28,6 +28,16 @@ export const VerticalSlider = ({
     onChange(newValue);
   }, [onChange]);
 
+  const handleTouch = React.useCallback((clientY: number) => {
+    if (!sliderRef.current) return;
+    
+    const rect = sliderRef.current.getBoundingClientRect();
+    const height = rect.height;
+    const y = clientY - rect.top;
+    const newValue = Math.max(0, Math.min(100, (1 - y / height) * 100));
+    onChange(newValue);
+  }, [onChange]);
+
   React.useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!isDragging.current) return;
@@ -48,6 +58,26 @@ export const VerticalSlider = ({
     };
   }, [handleDrag]);
 
+  React.useEffect(() => {
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging.current) return;
+      e.preventDefault();
+      handleTouch(e.touches[0].clientY);
+    };
+
+    const onTouchEnd = () => {
+      isDragging.current = false;
+    };
+
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+
+    return () => {
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [handleTouch]);
+
   return (
     <div className="h-48 md:h-64 flex flex-col items-center gap-2">
       <div 
@@ -56,6 +86,10 @@ export const VerticalSlider = ({
         onMouseDown={(e) => {
           isDragging.current = true;
           handleDrag(e.clientY);
+        }}
+        onTouchStart={(e) => {
+          isDragging.current = true;
+          handleTouch(e.touches[0].clientY);
         }}
       >
         <div 
@@ -68,6 +102,9 @@ export const VerticalSlider = ({
         onClick={() => {
           onChange(0);
           onMute(index);
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation();  // Prevent touch event from bubbling
         }}
         title="Mute"
       >

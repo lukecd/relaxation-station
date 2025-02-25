@@ -80,6 +80,7 @@ export const useEvolvingPad = () => {
       
       // Load ambient sound
       await audioRefs.player.current.load("/samples/birds.mp3");
+      audioRefs.player.current.start();
 
       // Initialize drone gains with proper initial volume
       const droneGains = [

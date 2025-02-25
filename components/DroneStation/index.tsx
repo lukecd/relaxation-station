@@ -203,6 +203,50 @@ const DroneStation: React.FC = () => {
     setNodePositions(newPositions);
   };
 
+  // Add touch handlers for nodes
+  const handleTouchStart = (index: number, event: React.TouchEvent) => {
+    event.preventDefault();
+    setIsDragging(true);
+    setDragIndex(index);
+    document.body.style.userSelect = 'none';
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    if (!isDragging || dragIndex === null) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const isDesktop = rect.width >= 500;
+    
+    const currentBaseRadius = isDesktop ? DESKTOP_BASE_RADIUS : BASE_RADIUS;
+    const currentMaxRadius = isDesktop ? DESKTOP_MAX_RADIUS : MAX_RADIUS;
+    
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const touch = event.touches[0];
+    const mouseX = touch.clientX - centerX;
+    const mouseY = touch.clientY - centerY;
+    
+    const angle = (dragIndex / NUM_NODES) * 2 * Math.PI - Math.PI / 2;
+    
+    const nodeX = Math.cos(angle);
+    const nodeY = Math.sin(angle);
+    const projection = mouseX * nodeX + mouseY * nodeY;
+    
+    const radiusRange = currentMaxRadius - currentBaseRadius;
+    const clampedProjection = Math.max(currentBaseRadius, Math.min(currentMaxRadius, projection));
+    const probability = (clampedProjection - currentBaseRadius) / radiusRange;
+
+    setNodePositions(prev => {
+      const newPositions = [...prev];
+      newPositions[dragIndex] = {
+        radius: clampedProjection,
+        probability
+      };
+      return newPositions;
+    });
+  };
+
   return (
     <div 
       data-drone-station
@@ -236,6 +280,9 @@ const DroneStation: React.FC = () => {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleMouseUp}
+            onTouchCancel={handleMouseUp}
           >
             {/* Draw the outer circle guide */}
             <div 
@@ -285,6 +332,7 @@ const DroneStation: React.FC = () => {
                     zIndex: isDragging && dragIndex === index ? 10 : 1
                   }}
                   onMouseDown={(e) => handleMouseDown(index, e)}
+                  onTouchStart={(e) => handleTouchStart(index, e)}
                 >
                   <div
                     className="rounded-full backdrop-blur-sm shadow-lg"
